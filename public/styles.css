@@ -1,0 +1,12 @@
+body { scroll-behavior: smooth; }
+.card { border-radius: 10px; }
+pre { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 8px; }
+.badge { font-size: 0.75rem; }
+.dropzone { border: 2px dashed #6c757d; padding: 2rem; border-radius: 12px; background: #fff; text-align: center; transition: border-color .2s, background-color .2s; }
+.dropzone.dragover { border-color: #0d6efd; background: #f0f8ff; }
+.chat-box { background: #f8f9fa; border: 1px solid #e9ecef; height: 260px; overflow-y: auto; padding: 10px; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+.chat-msg { margin-bottom: .5rem; }
+.chat-msg .sender { font-weight: 600; margin-right: .25rem; }
+.stat { background: #fff; border-radius: 10px; padding: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.stat .label { color: #6c757d; font-size: .85rem; }
+.stat .value { font-weight: 700; font-size: 1.1rem; }

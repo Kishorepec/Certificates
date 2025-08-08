@@ -1,67 +1,116 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Log Analytics</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body class="bg-light">
-  <div class="container py-4">
-    <h2 class="mb-4">Log Analytics Dashboard</h2>
+<%- include('partials/head', { title: 'Report - Logalyze' }) %>
+  <h2 class="mb-4">Log Analytics Dashboard</h2>
 
-    <div class="row mb-4">
-      <div class="col"><b>Total Requests:</b> <%= total %></div>
-      <div class="col"><b>Errors (4xx/5xx):</b> <%= errors %></div>
-      <div class="col"><b>Top IP:</b> <%= topIP %></div>
-      <div class="col"><b>Top URL:</b> <%= topURL %></div>
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-3"><div class="stat"><div class="label">Total Requests</div><div class="value"><%= total %></div></div></div>
+    <div class="col-12 col-md-3"><div class="stat"><div class="label">Errors (4xx/5xx)</div><div class="value"><%= errors %></div></div></div>
+    <div class="col-12 col-md-3"><div class="stat"><div class="label">Top IP</div><div class="value text-truncate" title="<%= topIP %>"><%= topIP %></div></div></div>
+    <div class="col-12 col-md-3"><div class="stat"><div class="label">Top URL</div><div class="value text-truncate" title="<%= topURL %>"><%= topURL %></div></div></div>
+  </div>
+
+  <div class="card p-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="m-0">Status Code Breakdown</h5>
+      <div>
+        <button id="export-chart" class="btn btn-sm btn-outline-secondary">Export PNG</button>
+      </div>
     </div>
-
-    <div class="card p-3 mb-4">
-      <h5>Status Code Breakdown</h5>
-      <canvas id="statusChart" height="150"></canvas>
-    </div>
-
-    <div class="card p-3 mb-4">
-      <h5>Ask AI About This Log</h5>
-      <form id="chat-form">
-        <input type="text" class="form-control mb-2" id="user-query" placeholder="e.g. What is the most common error?" required>
-        <button class="btn btn-primary" type="submit">Ask</button>
-        <div id="ai-response" class="mt-3 text-secondary"></div>
-      </form>
-    </div>
-
-    <div class="card p-3">
-      <h5>Raw Log Content</h5>
-      <pre style="max-height: 320px; overflow: auto; white-space: pre-wrap;"><%= logText %></pre>
+    <canvas id="statusChart" height="140"></canvas>
+    <div class="table-responsive mt-3">
+      <table class="table table-sm table-striped">
+        <thead><tr><th>Status</th><th>Count</th></tr></thead>
+        <tbody id="statusTable"></tbody>
+      </table>
     </div>
   </div>
 
+  <div class="card p-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="m-0">Ask AI About This Log</h5>
+      <a id="downloadLink" class="btn btn-sm btn-outline-secondary" target="_blank">Download Raw</a>
+    </div>
+    <div id="chat-box" class="chat-box mb-2"></div>
+    <form id="chat-form" class="d-flex gap-2">
+      <input type="text" class="form-control" id="user-query" placeholder="e.g. What is the most common error?" required>
+      <button id="ask-btn" class="btn btn-primary" type="submit">Ask</button>
+    </form>
+  </div>
+
+  <div class="card p-3">
+    <h5>Raw Log Content</h5>
+    <pre style="max-height: 360px; overflow: auto; white-space: pre-wrap;" id="raw"><%= logText %></pre>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
+    const labels = <%- JSON.stringify(statusLabels) %>;
+    const counts = <%- JSON.stringify(statusCounts) %>;
+    const logId = <%- JSON.stringify(logId) %>;
+
     const ctx = document.getElementById('statusChart').getContext('2d');
-    new Chart(ctx, {
+    const chart = new Chart(ctx, {
       type: 'pie',
       data: {
-        labels: <%- JSON.stringify(statusLabels) %>,
-        datasets: [{
-          data: <%- JSON.stringify(statusCounts) %>,
-          backgroundColor: ['#198754', '#0d6efd', '#ffc107', '#dc3545', '#6c757d', '#6610f2', '#20c997']
-        }]
+        labels,
+        datasets: [{ data: counts, backgroundColor: labels.map(l => l.startsWith('2') ? '#198754' : l.startsWith('3') ? '#0d6efd' : l.startsWith('4') ? '#ffc107' : l.startsWith('5') ? '#dc3545' : '#6c757d') }]
       }
     });
 
-    document.getElementById('chat-form').addEventListener('submit', async (e) => {
+    document.getElementById('export-chart').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = chart.toBase64Image();
+      a.download = 'status-chart.png';
+      a.click();
+    });
+
+    // Build status table
+    const tbody = document.getElementById('statusTable');
+    labels.forEach((code, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${code}</td><td>${counts[i]}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    // Download link with encoding
+    const dl = document.getElementById('downloadLink');
+    dl.href = '/logs/' + encodeURIComponent(logId) + '/raw';
+
+    // Chat
+    const chatForm = document.getElementById('chat-form');
+    const chatBox = document.getElementById('chat-box');
+    const askBtn = document.getElementById('ask-btn');
+
+    function append(sender, text) {
+      const div = document.createElement('div');
+      div.className = 'chat-msg';
+      div.innerHTML = `<span class="sender">${sender}:</span> ${text}`;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    chatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const query = document.getElementById('user-query').value.trim();
+      const input = document.getElementById('user-query');
+      const query = input.value.trim();
       if (!query) return;
-      const res = await fetch('/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ logId: <%- JSON.stringify(logId) %>, query })
-      });
-      const data = await res.json();
-      document.getElementById('ai-response').textContent = data.answer;
+      append('You', query);
+      input.value = '';
+      askBtn.disabled = true;
+      askBtn.textContent = 'Asking...';
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ logId, query })
+        });
+        const data = await res.json();
+        append('AI', data.answer || 'No response');
+      } catch (err) {
+        append('AI', 'Error fetching response');
+      } finally {
+        askBtn.disabled = false;
+        askBtn.textContent = 'Ask';
+      }
     });
   </script>
-</body>
-</html>
+<%- include('partials/footer') %>
