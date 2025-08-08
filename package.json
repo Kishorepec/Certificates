@@ -1,0 +1,26 @@
+{
+  "name": "logalyze",
+  "version": "1.0.0",
+  "description": "Upload log files to S3, analyze, and chat with AI.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development nodemon server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.863.0",
+    "cohere-ai": "^7.18.0",
+    "compression": "^1.8.1",
+    "dotenv": "^17.2.1",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "uuid": "^11.1.0"
+  }
+}
